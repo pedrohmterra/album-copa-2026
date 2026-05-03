@@ -585,6 +585,7 @@
       background: white !important;
       color: black !important;
       padding: 0;
+      margin: 0;
     }
     body * { visibility: hidden; }
     #print-area, #print-area * { visibility: visible; }
@@ -593,75 +594,82 @@
       left: 0;
       top: 0;
       width: 100%;
-      padding: 20px;
+      padding: 0;
       background: white !important;
       color: black !important;
+      font-family: 'Inter', sans-serif;
     }
     #print-area h1 {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 28px;
-      letter-spacing: 1.5px;
-      color: black !important;
-      margin-bottom: 4px;
-      border-bottom: 2px solid black;
-      padding-bottom: 8px;
-    }
-    #print-area .print-subtitle {
-      font-size: 11px;
-      color: #555 !important;
-      margin-bottom: 16px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    #print-area h2 {
       font-family: 'Bebas Neue', sans-serif;
       font-size: 18px;
       letter-spacing: 1px;
       color: black !important;
-      margin: 16px 0 8px;
-      padding-bottom: 4px;
-      border-bottom: 1px solid #ccc;
+      margin: 0 0 2px 0;
+      border-bottom: 1.5px solid black;
+      padding-bottom: 3px;
+    }
+    #print-area .print-subtitle {
+      font-size: 8px;
+      color: #555 !important;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    #print-area h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      color: black !important;
+      margin: 8px 0 3px 0;
+      padding-bottom: 1px;
+      border-bottom: 1px solid #999;
     }
     #print-area .print-stats {
       display: flex;
-      gap: 24px;
-      font-size: 12px;
-      margin-bottom: 12px;
+      gap: 14px;
+      font-size: 9px;
+      margin-bottom: 4px;
       color: #333 !important;
     }
-    #print-area .print-stats strong { font-size: 14px; }
+    #print-area .print-stats strong { font-size: 10px; }
     #print-area .print-list {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      line-height: 1.6;
+      font-size: 8.5px;
+      line-height: 1.35;
       color: black !important;
       word-break: break-word;
+      column-count: 2;
+      column-gap: 16px;
+      column-rule: 1px solid #ddd;
     }
     #print-area .print-team {
-      margin-bottom: 6px;
+      margin-bottom: 2px;
       page-break-inside: avoid;
+      break-inside: avoid;
     }
     #print-area .print-team-name {
       font-weight: 700;
       font-family: 'Inter', sans-serif;
-      font-size: 11px;
+      font-size: 8.5px;
       text-transform: uppercase;
       color: black !important;
     }
     #print-area .print-codes {
       display: inline;
-      color: #333 !important;
+      color: #222 !important;
+      font-size: 8.5px;
     }
     #print-area .print-footer {
-      margin-top: 24px;
-      padding-top: 12px;
+      margin-top: 8px;
+      padding-top: 4px;
       border-top: 1px solid #ccc;
-      font-size: 10px;
-      color: #666 !important;
+      font-size: 7px;
+      color: #888 !important;
       text-align: center;
     }
     @page {
-      margin: 1cm;
+      margin: 0.6cm;
+      size: A4;
     }
   }
 
@@ -1150,17 +1158,26 @@ document.getElementById('print-trade').addEventListener('click', () => {
   // Repetidas
   html += `<h2>🔁 Repetidas (${totalDups})</h2>`;
   if (dups.length === 0) {
-    html += '<div class="print-list">Nenhuma repetida.</div>';
+    html += '<div class="print-list" style="column-count:1;">Nenhuma repetida.</div>';
   } else {
-    // Agrupar repetidas por seleção
+    // Agrupar repetidas por seleção (e por código de prefixo para abreviar)
     const dupsByTeam = {};
+    const teamPrefixes = {};
     dups.forEach(d => {
-      if (!dupsByTeam[d.team]) dupsByTeam[d.team] = [];
-      dupsByTeam[d.team].push(d.code + (d.count > 1 ? ' x' + d.count : ''));
+      if (!dupsByTeam[d.team]) {
+        dupsByTeam[d.team] = [];
+        // Pegar o prefixo a partir do código (ex: "BRA" de "BRA01")
+        const prefix = d.code.replace(/\d+$/, '');
+        teamPrefixes[d.team] = prefix;
+      }
+      // Mostrar só o número (sem prefixo) para economizar espaço
+      const num = d.code.replace(/^[A-Z]+/, '');
+      dupsByTeam[d.team].push(num + (d.count > 1 ? '×' + d.count : ''));
     });
     html += '<div class="print-list">';
     Object.keys(dupsByTeam).forEach(team => {
-      html += `<div class="print-team"><span class="print-team-name">${team}:</span> <span class="print-codes">${dupsByTeam[team].join(', ')}</span></div>`;
+      const prefix = teamPrefixes[team];
+      html += `<div class="print-team"><span class="print-team-name">${team} (${prefix}):</span> <span class="print-codes">${dupsByTeam[team].join(', ')}</span></div>`;
     });
     html += '</div>';
   }
@@ -1168,11 +1185,16 @@ document.getElementById('print-trade').addEventListener('click', () => {
   // Faltam
   html += `<h2>🎯 Faltam (${totalMissing})</h2>`;
   if (totalMissing === 0) {
-    html += '<div class="print-list">Álbum completo! 🏆</div>';
+    html += '<div class="print-list" style="column-count:1;">Álbum completo! 🏆</div>';
   } else {
     html += '<div class="print-list">';
     Object.keys(missingByTeam).forEach(team => {
-      html += `<div class="print-team"><span class="print-team-name">${team}:</span> <span class="print-codes">${missingByTeam[team].join(', ')}</span></div>`;
+      // Pegar prefixo do primeiro código
+      const firstCode = missingByTeam[team][0];
+      const prefix = firstCode.replace(/\d+$/, '');
+      // Mostrar só os números
+      const nums = missingByTeam[team].map(c => c.replace(/^[A-Z]+/, ''));
+      html += `<div class="print-team"><span class="print-team-name">${team} (${prefix}):</span> <span class="print-codes">${nums.join(', ')}</span></div>`;
     });
     html += '</div>';
   }
