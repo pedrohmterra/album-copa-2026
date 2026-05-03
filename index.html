@@ -18,6 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   :root {
     --bg: #0a0e1a;
@@ -502,6 +503,57 @@
     font-size: 14px;
   }
 
+  /* Opções de compartilhamento */
+  .share-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .share-option {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    color: var(--text);
+    font-family: inherit;
+    width: 100%;
+  }
+  .share-option:hover, .share-option:active {
+    border-color: var(--accent);
+    background: rgba(0,212,170,0.05);
+    transform: translateY(-1px);
+  }
+  .share-icon {
+    font-size: 32px;
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    border-radius: 10px;
+  }
+  .share-text {
+    flex: 1;
+  }
+  .share-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .share-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+
   .modal-footer {
     padding: 16px 24px;
     border-top: 1px solid var(--border);
@@ -631,6 +683,7 @@
         <option value="dup">Apenas repetidas</option>
       </select>
       <button class="btn primary" id="btn-trade">📋 Lista de Trocas</button>
+      <button class="btn" id="btn-share" style="background:#25D366;color:#fff;border-color:#25D366;font-weight:600;">💬 Compartilhar</button>
       
       <button class="btn" id="install-btn" style="display:none;background:var(--accent-warm);color:#0a0e1a;border-color:var(--accent-warm);font-weight:600;">📱 Instalar app</button>
       <button class="btn" id="btn-help" title="Como usar" style="padding:10px 12px;">?</button>
@@ -662,6 +715,37 @@
     </div>
   </div>
 </div>
+
+<!-- Modal de Compartilhamento -->
+<div class="modal-overlay" id="share-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Compartilhar</h2>
+      <button class="close-btn" id="share-modal-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="share-options">
+        <button class="share-option" id="share-image">
+          <div class="share-icon">🖼️</div>
+          <div class="share-text">
+            <div class="share-title">Imagem do que falta</div>
+            <div class="share-desc">Card visual com as figurinhas que faltam</div>
+          </div>
+        </button>
+        <button class="share-option" id="share-text">
+          <div class="share-icon">💬</div>
+          <div class="share-text">
+            <div class="share-title">Texto das repetidas</div>
+            <div class="share-desc">Mensagem formatada com suas repetidas para troca</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Container oculto para gerar a imagem -->
+<div id="image-container" style="position:fixed;left:-99999px;top:0;"></div>
 
 <div class="toast" id="toast"></div>
 
@@ -1081,7 +1165,7 @@ document.getElementById('print-trade').addEventListener('click', () => {
   document.body.setAttribute('style', 'background:#fff;color:#000;padding:0;margin:0;font-family:Arial,sans-serif;');
   document.body.innerHTML = `
     <style id="print-temp-style">
-      @page { margin: 8mm 6mm; size: A4 portrait; }
+      @page { margin: 6mm 5mm; size: A4 portrait; }
 
       body {
         background: #fff !important;
@@ -1113,38 +1197,41 @@ document.getElementById('print-trade').addEventListener('click', () => {
       .btn-cancel { background: #fff; color: #000; }
 
       .print-page {
-        padding: 8px 10px;
+        padding: 4px 6px;
       }
 
       .print-header {
         display: flex;
         justify-content: space-between;
-        align-items: flex-end;
-        border-bottom: 2px solid #000;
-        padding-bottom: 4px;
-        margin-bottom: 8px;
+        align-items: baseline;
+        border-bottom: 1.5px solid #000;
+        padding-bottom: 3px;
+        margin-bottom: 6px;
+        gap: 12px;
+        flex-wrap: nowrap;
       }
       .print-title {
-        font-size: 15pt;
+        font-size: 11pt;
         font-weight: 800;
         letter-spacing: 0.3px;
         line-height: 1;
+        white-space: nowrap;
       }
       .print-title small {
-        display: block;
         font-size: 7pt;
         color: #555;
         font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin-top: 3px;
+        margin-left: 8px;
       }
       .print-stats {
-        font-size: 8.5pt;
+        font-size: 8pt;
         text-align: right;
-        line-height: 1.4;
+        line-height: 1;
+        white-space: nowrap;
       }
-      .print-stats strong { font-size: 11pt; }
+      .print-stats strong { font-size: 9.5pt; }
 
       .album-table {
         width: 100%;
@@ -1176,16 +1263,16 @@ document.getElementById('print-trade').addEventListener('click', () => {
         border: 0.5px solid #bbb;
         padding: 0;
         text-align: center;
-        height: 16px;
-        font-size: 8pt;
+        height: 13px;
+        font-size: 7.5pt;
       }
 
       .album-table .team-cell {
         text-align: left;
-        padding: 3px 6px;
+        padding: 2px 5px;
         font-family: Arial, sans-serif;
         background: #f0f0f0;
-        font-size: 8pt;
+        font-size: 7.5pt;
         line-height: 1.1;
         white-space: nowrap;
         overflow: hidden;
@@ -1240,27 +1327,20 @@ document.getElementById('print-trade').addEventListener('click', () => {
         color: #ccc;
       }
 
-      .legend {
-        display: flex;
-        gap: 14px;
-        font-size: 7.5pt;
-        margin-top: 8px;
-        align-items: center;
-        flex-wrap: wrap;
-      }
       .legend-item {
-        display: flex;
+        display: inline-flex;
         align-items: center;
-        gap: 5px;
+        gap: 4px;
+        margin-right: 10px;
       }
       .legend-box {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 18px;
-        height: 14px;
+        width: 16px;
+        height: 12px;
         border: 0.5px solid #999;
-        font-size: 8pt;
+        font-size: 7pt;
         font-weight: 700;
       }
       .legend-have { background: #1a1a1a; color: #fff; }
@@ -1268,12 +1348,19 @@ document.getElementById('print-trade').addEventListener('click', () => {
       .legend-miss { background: #fff; color: #333; }
 
       .print-footer {
-        margin-top: 8px;
+        margin-top: 6px;
         padding-top: 4px;
         border-top: 1px solid #ccc;
-        font-size: 6.5pt;
-        color: #888;
-        text-align: center;
+        font-size: 7pt;
+        color: #666;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .footer-divider {
+        color: #ccc;
+        margin: 0 4px;
       }
 
       @media screen {
@@ -1296,12 +1383,10 @@ document.getElementById('print-trade').addEventListener('click', () => {
     <div class="print-page">
       <div class="print-header">
         <div class="print-title">
-          ÁLBUM COPA 2026
-          <small>Panini · Controle de Figurinhas · ${dateStr}</small>
+          ÁLBUM COPA 2026<small>Panini · ${dateStr}</small>
         </div>
         <div class="print-stats">
-          <strong>${totalHave}</strong>/${ALL_STICKERS.length} coladas (<strong>${pct}%</strong>)<br>
-          ${totalDups} repetidas · ${totalMissing} faltam
+          <strong>${totalHave}</strong>/${ALL_STICKERS.length} (<strong>${pct}%</strong>) · ${totalDups} repetidas · ${totalMissing} faltam
         </div>
       </div>
 
@@ -1310,13 +1395,13 @@ document.getElementById('print-trade').addEventListener('click', () => {
         <tbody>${tableRows}</tbody>
       </table>
 
-      <div class="legend">
-        <div class="legend-item"><span class="legend-box legend-have">✓</span> Tenho</div>
-        <div class="legend-item"><span class="legend-box legend-dup">✓+</span> Tenho + Repetida</div>
-        <div class="legend-item"><span class="legend-box legend-miss">5</span> Falta (mostra o número)</div>
+      <div class="print-footer">
+        <span class="legend-item"><span class="legend-box legend-have">✓</span> Tenho</span>
+        <span class="legend-item"><span class="legend-box legend-dup">✓+</span> Tenho + Repetida</span>
+        <span class="legend-item"><span class="legend-box legend-miss">5</span> Falta</span>
+        <span class="footer-divider">·</span>
+        <span>Álbum Copa 2026 · Controle de Figurinhas</span>
       </div>
-
-      <div class="print-footer">Álbum Copa 2026 · Gerado pelo seu controle de figurinhas</div>
     </div>
   `;
 
@@ -1369,6 +1454,463 @@ const btnHelp = document.getElementById('btn-help');
 const helpBox = document.getElementById('help-box');
 btnHelp.addEventListener('click', () => {
   helpBox.classList.toggle('show');
+});
+
+// ============= COMPARTILHAR =============
+const shareModal = document.getElementById('share-modal');
+const btnShare = document.getElementById('btn-share');
+
+btnShare.addEventListener('click', () => {
+  shareModal.classList.add('show');
+});
+
+document.getElementById('share-modal-close').addEventListener('click', () => {
+  shareModal.classList.remove('show');
+});
+
+shareModal.addEventListener('click', (e) => {
+  if (e.target === shareModal) shareModal.classList.remove('show');
+});
+
+// Função para construir HTML estilizado para a imagem do "Faltam"
+function buildShareImageHTML() {
+  let totalHave = 0, totalDups = 0, totalMissing = 0;
+  ALL_STICKERS.forEach(s => {
+    const v = state[s.code] || 0;
+    if (v >= 1) totalHave++; else totalMissing++;
+    if (v >= 2) totalDups += (v - 1);
+  });
+  const pct = Math.round((totalHave / ALL_STICKERS.length) * 100);
+
+  // Agrupar faltantes por seleção
+  const missingByTeam = {};
+  ALBUM.forEach(team => {
+    const teamStickers = ALL_STICKERS.filter(s => s.team === team.code);
+    const missing = teamStickers.filter(s => (state[s.code] || 0) === 0);
+    if (missing.length > 0) {
+      missingByTeam[team.name] = {
+        count: missing.length,
+        total: teamStickers.length,
+        nums: missing.map(s => parseInt(s.code.replace(/^[A-Z]+/, ''), 10).toString()),
+        prefix: team.code
+      };
+    }
+  });
+
+  let teamsHtml = '';
+  Object.keys(missingByTeam).forEach(teamName => {
+    const info = missingByTeam[teamName];
+    const teamPct = Math.round(((info.total - info.count) / info.total) * 100);
+    teamsHtml += `
+      <div class="img-team">
+        <div class="img-team-header">
+          <div class="img-team-name">${teamName} <span class="img-team-prefix">${info.prefix}</span></div>
+          <div class="img-team-count">${info.count}/${info.total}</div>
+        </div>
+        <div class="img-nums">
+          ${info.nums.map(n => `<span class="img-num">${n}</span>`).join('')}
+        </div>
+      </div>
+    `;
+  });
+
+  if (Object.keys(missingByTeam).length === 0) {
+    teamsHtml = `
+      <div class="img-complete">
+        <div class="img-trophy">🏆</div>
+        <div class="img-complete-text">ÁLBUM COMPLETO!</div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="img-card">
+      <div class="img-bg-pattern"></div>
+      <div class="img-content">
+        <div class="img-header">
+          <div class="img-title">
+            <div class="img-album">ÁLBUM</div>
+            <div class="img-cup">COPA 2026</div>
+          </div>
+          <div class="img-badge">
+            <div class="img-pct">${pct}%</div>
+            <div class="img-pct-label">completo</div>
+          </div>
+        </div>
+
+        <div class="img-stats-row">
+          <div class="img-stat">
+            <div class="img-stat-value have">${totalHave}</div>
+            <div class="img-stat-label">coladas</div>
+          </div>
+          <div class="img-stat">
+            <div class="img-stat-value dup">${totalDups}</div>
+            <div class="img-stat-label">repetidas</div>
+          </div>
+          <div class="img-stat">
+            <div class="img-stat-value miss">${totalMissing}</div>
+            <div class="img-stat-label">faltam</div>
+          </div>
+        </div>
+
+        <div class="img-progress">
+          <div class="img-progress-fill" style="width:${pct}%"></div>
+        </div>
+
+        <div class="img-section-title">
+          <span>🎯</span> Estou procurando estas figurinhas
+        </div>
+
+        <div class="img-teams-grid">
+          ${teamsHtml}
+        </div>
+
+        <div class="img-footer">
+          PANINI · FIFA WORLD CUP 2026
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Estilos da imagem (injetados separadamente para o html2canvas capturar bem)
+const imageStyles = `
+<style>
+  #image-container .img-card {
+    width: 720px;
+    background: linear-gradient(135deg, #0a0e1a 0%, #131829 100%);
+    color: #e8ecf5;
+    font-family: 'Inter', -apple-system, sans-serif;
+    padding: 40px;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+  }
+  #image-container .img-bg-pattern {
+    position: absolute;
+    top: -100px;
+    right: -100px;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(0,212,170,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  #image-container .img-content {
+    position: relative;
+    z-index: 2;
+  }
+  #image-container .img-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #252b45;
+  }
+  #image-container .img-title {
+    line-height: 1;
+  }
+  #image-container .img-album {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 38px;
+    letter-spacing: 2px;
+    color: #e8ecf5;
+  }
+  #image-container .img-cup {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 38px;
+    letter-spacing: 2px;
+    color: #00d4aa;
+    margin-top: 2px;
+  }
+  #image-container .img-badge {
+    text-align: right;
+  }
+  #image-container .img-pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 56px;
+    font-weight: 700;
+    color: #00d4aa;
+    line-height: 1;
+  }
+  #image-container .img-pct-label {
+    font-size: 11px;
+    color: #8892b0;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 4px;
+  }
+  #image-container .img-stats-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  #image-container .img-stat {
+    flex: 1;
+    background: #1a2038;
+    border: 1px solid #252b45;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+  #image-container .img-stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  #image-container .img-stat-value.have { color: #00d4aa; }
+  #image-container .img-stat-value.dup { color: #ffb800; }
+  #image-container .img-stat-value.miss { color: #ff6b6b; }
+  #image-container .img-stat-label {
+    font-size: 10px;
+    color: #8892b0;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-top: 6px;
+  }
+  #image-container .img-progress {
+    height: 8px;
+    background: #252b45;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  #image-container .img-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00d4aa 0%, #ffb800 100%);
+    border-radius: 4px;
+  }
+  #image-container .img-section-title {
+    font-size: 13px;
+    color: #8892b0;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #image-container .img-section-title span {
+    font-size: 18px;
+  }
+  #image-container .img-teams-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+  #image-container .img-team {
+    background: #1a2038;
+    border: 1px solid #252b45;
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  #image-container .img-team-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+  }
+  #image-container .img-team-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #e8ecf5;
+  }
+  #image-container .img-team-prefix {
+    font-size: 10px;
+    color: #8892b0;
+    font-weight: 500;
+    margin-left: 4px;
+    letter-spacing: 0.5px;
+  }
+  #image-container .img-team-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #ff6b6b;
+    font-weight: 700;
+  }
+  #image-container .img-nums {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+  #image-container .img-num {
+    background: #252b45;
+    color: #e8ecf5;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 6px;
+    border-radius: 4px;
+    min-width: 18px;
+    text-align: center;
+  }
+  #image-container .img-complete {
+    text-align: center;
+    padding: 60px 20px;
+  }
+  #image-container .img-trophy {
+    font-size: 80px;
+    margin-bottom: 16px;
+  }
+  #image-container .img-complete-text {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    color: #00d4aa;
+    letter-spacing: 2px;
+  }
+  #image-container .img-footer {
+    text-align: center;
+    font-size: 10px;
+    color: #8892b0;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding-top: 16px;
+    border-top: 1px solid #252b45;
+  }
+</style>
+`;
+
+// Gerar e compartilhar imagem
+document.getElementById('share-image').addEventListener('click', async () => {
+  showToast('Gerando imagem...');
+  shareModal.classList.remove('show');
+
+  // Construir conteúdo
+  const container = document.getElementById('image-container');
+  container.innerHTML = imageStyles + buildShareImageHTML();
+
+  // Aguardar fontes carregarem
+  await new Promise(r => setTimeout(r, 300));
+  if (document.fonts && document.fonts.ready) {
+    await document.fonts.ready;
+  }
+
+  try {
+    const cardEl = container.querySelector('.img-card');
+    const canvas = await html2canvas(cardEl, {
+      backgroundColor: '#0a0e1a',
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      allowTaint: true
+    });
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        showToast('Erro ao gerar imagem', true);
+        return;
+      }
+
+      const file = new File([blob], 'album-copa-2026.png', { type: 'image/png' });
+
+      // Tentar usar Web Share API (compartilhar nativo - WhatsApp, etc)
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'Álbum Copa 2026',
+            text: 'Meu progresso no álbum da Copa 2026! Quem tem essas pra trocar?'
+          });
+          showToast('Compartilhado!');
+        } catch (e) {
+          if (e.name !== 'AbortError') {
+            // Fallback: download
+            downloadImage(blob);
+          }
+        }
+      } else {
+        // Fallback: download da imagem
+        downloadImage(blob);
+      }
+
+      // Limpar container
+      container.innerHTML = '';
+    }, 'image/png');
+  } catch (e) {
+    console.error(e);
+    showToast('Erro ao gerar imagem', true);
+    container.innerHTML = '';
+  }
+});
+
+function downloadImage(blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'album-copa-2026.png';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast('Imagem baixada! Compartilhe pelo WhatsApp');
+}
+
+// Compartilhar texto das repetidas
+document.getElementById('share-text').addEventListener('click', async () => {
+  // Coletar repetidas agrupadas por seleção
+  const dupsByTeam = {};
+  ALBUM.forEach(team => {
+    const teamStickers = ALL_STICKERS.filter(s => s.team === team.code);
+    const dups = [];
+    teamStickers.forEach(s => {
+      const v = state[s.code] || 0;
+      if (v >= 2) {
+        const num = parseInt(s.code.replace(/^[A-Z]+/, ''), 10).toString();
+        dups.push(num + (v > 2 ? '×' + (v-1) : ''));
+      }
+    });
+    if (dups.length > 0) {
+      dupsByTeam[team.name] = { prefix: team.code, nums: dups };
+    }
+  });
+
+  let totalDups = 0;
+  ALL_STICKERS.forEach(s => {
+    const v = state[s.code] || 0;
+    if (v >= 2) totalDups += (v - 1);
+  });
+
+  let text = '🏆 *ÁLBUM COPA 2026* 🏆\n';
+  text += '_Tenho essas repetidas pra trocar:_\n\n';
+
+  if (Object.keys(dupsByTeam).length === 0) {
+    text += 'Nenhuma repetida no momento 😅';
+  } else {
+    Object.keys(dupsByTeam).forEach(teamName => {
+      const info = dupsByTeam[teamName];
+      text += `⚽ *${teamName}* (${info.prefix}): ${info.nums.join(', ')}\n`;
+    });
+    text += `\n📊 Total: *${totalDups} figurinhas* repetidas`;
+  }
+
+  text += '\n\nQuem tem alguma das que tô precisando? 🙏';
+
+  shareModal.classList.remove('show');
+
+  // Tentar compartilhamento nativo
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: 'Álbum Copa 2026 - Repetidas',
+        text: text
+      });
+      showToast('Compartilhado!');
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+
+  // Fallback: copiar para área de transferência
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('Texto copiado! Cole no WhatsApp');
+  } catch (e) {
+    showToast('Erro ao copiar texto', true);
+  }
 });
 
 // Botão instalar
