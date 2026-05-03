@@ -1512,15 +1512,9 @@ function buildShareImageHTML() {
 
   let progressHtml = '';
   inProgress.forEach(info => {
-    const teamPct = Math.round(((info.total - info.count) / info.total) * 100);
     progressHtml += `
       <div class="img-team">
-        <div class="img-team-header">
-          <div class="img-team-name">${info.name}</div>
-          <div class="img-team-progress">
-            <span class="img-team-frac">${info.total - info.count}/${info.total}</span>
-          </div>
-        </div>
+        <div class="img-team-code">${info.prefix}</div>
         <div class="img-nums">
           ${info.nums.map(n => `<span class="img-num">${n}</span>`).join('')}
         </div>
@@ -1534,7 +1528,7 @@ function buildShareImageHTML() {
       <div class="img-not-started">
         <div class="img-not-started-title">⚠️ Ainda não comecei estas (qualquer figurinha ajuda):</div>
         <div class="img-not-started-list">
-          ${notStarted.map(t => `<span class="img-team-pill">${t.name}</span>`).join('')}
+          ${notStarted.map(t => `<span class="img-team-pill">${t.prefix}</span>`).join('')}
         </div>
       </div>
     `;
@@ -1741,50 +1735,40 @@ const imageStyles = `
   }
   #image-container .img-teams-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
     margin-bottom: 32px;
   }
   #image-container .img-team {
     background: #1a2038;
     border: 1px solid #252b45;
     border-radius: 12px;
-    padding: 16px 18px;
-  }
-  #image-container .img-team-header {
+    padding: 14px 16px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
+    flex-direction: column;
+    gap: 10px;
   }
-  #image-container .img-team-name {
-    font-size: 18px;
-    font-weight: 700;
-    color: #e8ecf5;
-  }
-  #image-container .img-team-frac {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
+  #image-container .img-team-code {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    letter-spacing: 2px;
     color: #00d4aa;
-    font-weight: 700;
-    background: rgba(0,212,170,0.12);
-    padding: 4px 10px;
-    border-radius: 6px;
+    line-height: 1;
   }
   #image-container .img-nums {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 5px;
   }
   #image-container .img-num {
     background: #252b45;
     color: #e8ecf5;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
-    padding: 6px 10px;
+    padding: 5px 8px;
     border-radius: 6px;
-    min-width: 28px;
+    min-width: 26px;
     text-align: center;
   }
   #image-container .img-not-started {
@@ -1809,11 +1793,12 @@ const imageStyles = `
   }
   #image-container .img-team-pill {
     background: #252b45;
-    color: #e8ecf5;
-    font-size: 13px;
-    font-weight: 600;
-    padding: 6px 12px;
-    border-radius: 20px;
+    color: #00d4aa;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 1.5px;
+    padding: 6px 14px;
+    border-radius: 6px;
   }
   #image-container .img-complete {
     text-align: center;
