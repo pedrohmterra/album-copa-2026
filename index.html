@@ -682,12 +682,16 @@
         <option value="have">Apenas que tenho</option>
         <option value="dup">Apenas repetidas</option>
       </select>
-      <button class="btn primary" id="btn-trade">📋 Lista de Trocas</button>
-      <button class="btn" id="btn-share" style="background:#25D366;color:#fff;border-color:#25D366;font-weight:600;">💬 Compartilhar</button>
+      <button class="btn primary" id="btn-menu">⋯ Menu</button>
+      <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
+      <!-- Botões ocultos: existem só para receber eventos disparados pelo menu -->
+      <button id="btn-trade" style="display:none;"></button>
+      <button id="btn-share" style="display:none;"></button>
+      <button id="btn-export" style="display:none;"></button>
+      <button id="btn-reset" style="display:none;"></button>
+      <button id="btn-help" style="display:none;"></button>
       
       <button class="btn" id="install-btn" style="display:none;background:var(--accent-warm);color:#0a0e1a;border-color:var(--accent-warm);font-weight:600;">📱 Instalar app</button>
-      <button class="btn" id="btn-help" title="Como usar" style="padding:10px 12px;">?</button>
-      <button class="btn danger" id="btn-reset">↺ Resetar</button>
     </div>
     <div class="help" id="help-box" style="max-width:1400px;margin:10px auto 0;">
       <strong>Como marcar:</strong> <kbd>Toque</kbd> em uma figurinha para alternar entre <strong>Não tenho → Tenho → Repetida</strong>.<br>
@@ -697,6 +701,62 @@
 </header>
 
 <main id="main"></main>
+
+<!-- Modal Menu Principal -->
+<div class="modal-overlay" id="menu-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Menu</h2>
+      <button class="close-btn" id="menu-modal-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="share-options">
+        <button class="share-option" id="menu-trade">
+          <div class="share-icon">📋</div>
+          <div class="share-text">
+            <div class="share-title">Lista de Trocas</div>
+            <div class="share-desc">Ver suas repetidas e o que falta, com opção de imprimir</div>
+          </div>
+        </button>
+        <button class="share-option" id="menu-share">
+          <div class="share-icon" style="background:rgba(37,211,102,0.15);">💬</div>
+          <div class="share-text">
+            <div class="share-title">Compartilhar</div>
+            <div class="share-desc">Mandar imagem ou texto pelo WhatsApp</div>
+          </div>
+        </button>
+        <button class="share-option" id="menu-export">
+          <div class="share-icon">⬇️</div>
+          <div class="share-text">
+            <div class="share-title">Exportar Backup</div>
+            <div class="share-desc">Baixar arquivo com seus dados para guardar</div>
+          </div>
+        </button>
+        <button class="share-option" id="menu-import">
+          <div class="share-icon">⬆️</div>
+          <div class="share-text">
+            <div class="share-title">Importar Backup</div>
+            <div class="share-desc">Restaurar dados de um arquivo salvo</div>
+          </div>
+        </button>
+        <button class="share-option" id="menu-help">
+          <div class="share-icon">❓</div>
+          <div class="share-text">
+            <div class="share-title">Como usar</div>
+            <div class="share-desc">Instruções de uso do app</div>
+          </div>
+        </button>
+        <button class="share-option" id="menu-reset" style="border-color:rgba(255,71,87,0.3);">
+          <div class="share-icon" style="background:rgba(255,71,87,0.15);">🗑️</div>
+          <div class="share-text">
+            <div class="share-title" style="color:var(--danger);">Resetar Álbum</div>
+            <div class="share-desc">Apagar todas as figurinhas marcadas</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Modal de troca -->
 <div class="modal-overlay" id="modal">
@@ -1448,6 +1508,199 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') modal.classList.remove('show');
 });
 
+
+// ============= MENU PRINCIPAL =============
+const menuModal = document.getElementById('menu-modal');
+const btnMenu = document.getElementById('btn-menu');
+
+btnMenu.addEventListener('click', () => {
+  menuModal.classList.add('show');
+});
+
+document.getElementById('menu-modal-close').addEventListener('click', () => {
+  menuModal.classList.remove('show');
+});
+
+menuModal.addEventListener('click', (e) => {
+  if (e.target === menuModal) menuModal.classList.remove('show');
+});
+
+// Helper: fecha o menu e dispara click em outro elemento
+function menuAction(targetId) {
+  menuModal.classList.remove('show');
+  // Pequeno delay para a animação de fechamento ser visível
+  setTimeout(() => {
+    const el = document.getElementById(targetId);
+    if (el) el.click();
+  }, 150);
+}
+
+document.getElementById('menu-trade').addEventListener('click', () => {
+  menuModal.classList.remove('show');
+  setTimeout(() => document.getElementById('btn-trade').click(), 150);
+});
+document.getElementById('menu-share').addEventListener('click', () => {
+  menuModal.classList.remove('show');
+  setTimeout(() => document.getElementById('btn-share').click(), 150);
+});
+document.getElementById('menu-export').addEventListener('click', () => {
+  menuModal.classList.remove('show');
+  setTimeout(() => document.getElementById('btn-export').click(), 150);
+});
+document.getElementById('menu-import').addEventListener('click', () => {
+  menuModal.classList.remove('show');
+  setTimeout(() => document.getElementById('import-file').click(), 150);
+});
+document.getElementById('menu-help').addEventListener('click', () => {
+  menuModal.classList.remove('show');
+  setTimeout(() => {
+    const helpBox = document.getElementById('help-box');
+    helpBox.classList.add('show');
+    helpBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 150);
+});
+document.getElementById('menu-reset').addEventListener('click', () => {
+  menuModal.classList.remove('show');
+  setTimeout(() => document.getElementById('btn-reset').click(), 150);
+});
+
+// ============= EXPORTAR / IMPORTAR =============
+document.getElementById('btn-export').addEventListener('click', () => {
+  // Calcular estatísticas para incluir no arquivo
+  let totalHave = 0, totalDups = 0;
+  ALL_STICKERS.forEach(s => {
+    const v = state[s.code] || 0;
+    if (v >= 1) totalHave++;
+    if (v >= 2) totalDups += (v - 1);
+  });
+
+  const exportData = {
+    app: 'album-copa-2026',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    stats: {
+      have: totalHave,
+      dups: totalDups,
+      total: ALL_STICKERS.length,
+      pct: Math.round((totalHave / ALL_STICKERS.length) * 100)
+    },
+    data: state
+  };
+
+  const json = JSON.stringify(exportData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  // Nome do arquivo com data
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10);
+  const filename = `album-copa-2026-backup-${dateStr}.json`;
+
+  // Tentar Web Share API primeiro (compartilhar arquivo - mais útil no mobile)
+  const file = new File([blob], filename, { type: 'application/json' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({
+      files: [file],
+      title: 'Backup Álbum Copa 2026',
+      text: `Backup do meu álbum (${exportData.stats.have}/${exportData.stats.total} - ${exportData.stats.pct}%)`
+    }).then(() => {
+      showToast('Backup compartilhado!');
+      URL.revokeObjectURL(url);
+    }).catch((e) => {
+      if (e.name !== 'AbortError') {
+        // Fallback para download
+        triggerDownload(url, filename);
+      } else {
+        URL.revokeObjectURL(url);
+      }
+    });
+  } else {
+    // Download direto
+    triggerDownload(url, filename);
+  }
+});
+
+function triggerDownload(url, filename) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast('Backup baixado!');
+}
+
+document.getElementById('import-file').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+
+      // Validar formato
+      if (!imported || typeof imported !== 'object') {
+        throw new Error('Arquivo inválido');
+      }
+
+      // Aceita formato com {data: {...}} (novo) ou só o objeto direto (compatibilidade)
+      const importedData = imported.data || imported;
+
+      if (typeof importedData !== 'object' || Array.isArray(importedData)) {
+        throw new Error('Formato não reconhecido');
+      }
+
+      // Validar que as chaves parecem códigos válidos
+      const keys = Object.keys(importedData);
+      if (keys.length > 0) {
+        const validKey = /^[A-Z]+\d+$/;
+        const invalidCount = keys.filter(k => !validKey.test(k)).length;
+        if (invalidCount > keys.length * 0.5) {
+          throw new Error('Arquivo não parece ser um backup do álbum');
+        }
+      }
+
+      // Calcular estatísticas do que vai ser importado
+      let importHave = 0;
+      Object.values(importedData).forEach(v => {
+        if (v >= 1) importHave++;
+      });
+
+      // Calcular estatísticas atuais
+      let currentHave = 0;
+      Object.values(state).forEach(v => {
+        if (v >= 1) currentHave++;
+      });
+
+      // Confirmar com usuário
+      const msg = `Importar backup?\n\n` +
+                  `Backup: ${importHave} figurinhas marcadas\n` +
+                  `Atual: ${currentHave} figurinhas marcadas\n\n` +
+                  `⚠️ Os dados atuais serão substituídos pelos do backup.`;
+
+      if (confirm(msg)) {
+        state = importedData;
+        saveState();
+        render();
+        showToast(`Importado! ${importHave} figurinhas restauradas`);
+      }
+
+    } catch (err) {
+      console.error(err);
+      showToast('Erro: ' + (err.message || 'arquivo inválido'), true);
+    }
+
+    // Limpar input para permitir importar o mesmo arquivo de novo
+    e.target.value = '';
+  };
+  reader.onerror = () => {
+    showToast('Erro ao ler arquivo', true);
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+});
 
 // Botão ajuda
 const btnHelp = document.getElementById('btn-help');
