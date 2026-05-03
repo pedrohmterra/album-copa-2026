@@ -578,6 +578,97 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
   }
+
+  /* ===== IMPRESSÃO ===== */
+  @media print {
+    body {
+      background: white !important;
+      color: black !important;
+      padding: 0;
+    }
+    body * { visibility: hidden; }
+    #print-area, #print-area * { visibility: visible; }
+    #print-area {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      padding: 20px;
+      background: white !important;
+      color: black !important;
+    }
+    #print-area h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      letter-spacing: 1.5px;
+      color: black !important;
+      margin-bottom: 4px;
+      border-bottom: 2px solid black;
+      padding-bottom: 8px;
+    }
+    #print-area .print-subtitle {
+      font-size: 11px;
+      color: #555 !important;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    #print-area h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 18px;
+      letter-spacing: 1px;
+      color: black !important;
+      margin: 16px 0 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #ccc;
+    }
+    #print-area .print-stats {
+      display: flex;
+      gap: 24px;
+      font-size: 12px;
+      margin-bottom: 12px;
+      color: #333 !important;
+    }
+    #print-area .print-stats strong { font-size: 14px; }
+    #print-area .print-list {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      line-height: 1.6;
+      color: black !important;
+      word-break: break-word;
+    }
+    #print-area .print-team {
+      margin-bottom: 6px;
+      page-break-inside: avoid;
+    }
+    #print-area .print-team-name {
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      text-transform: uppercase;
+      color: black !important;
+    }
+    #print-area .print-codes {
+      display: inline;
+      color: #333 !important;
+    }
+    #print-area .print-footer {
+      margin-top: 24px;
+      padding-top: 12px;
+      border-top: 1px solid #ccc;
+      font-size: 10px;
+      color: #666 !important;
+      text-align: center;
+    }
+    @page {
+      margin: 1cm;
+    }
+  }
+
+  /* Área de impressão escondida na tela */
+  #print-area {
+    display: none;
+  }
 </style>
 </head>
 <body>
@@ -651,10 +742,14 @@
     </div>
     <div class="modal-footer">
       <button class="btn" id="copy-trade">📋 Copiar</button>
+      <button class="btn" id="print-trade">🖨️ Imprimir</button>
       <button class="btn primary" id="modal-close-2">Fechar</button>
     </div>
   </div>
 </div>
+
+<!-- Área de impressão (oculta na tela) -->
+<div id="print-area"></div>
 
 <div class="toast" id="toast"></div>
 
@@ -1009,6 +1104,87 @@ document.getElementById('copy-trade').addEventListener('click', () => {
   }).catch(() => {
     showToast('Erro ao copiar', true);
   });
+});
+
+// ============= IMPRIMIR =============
+document.getElementById('print-trade').addEventListener('click', () => {
+  // Recoletar dados atualizados
+  const dups = [];
+  ALL_STICKERS.forEach(s => {
+    const v = state[s.code] || 0;
+    if (v >= 2) dups.push({ code: s.code, count: v - 1, team: s.teamName });
+  });
+
+  const missingByTeam = {};
+  ALL_STICKERS.forEach(s => {
+    if ((state[s.code] || 0) === 0) {
+      if (!missingByTeam[s.teamName]) missingByTeam[s.teamName] = [];
+      missingByTeam[s.teamName].push(s.code);
+    }
+  });
+
+  const totalDups = dups.reduce((s, d) => s + d.count, 0);
+  const totalMissing = Object.values(missingByTeam).reduce((s, a) => s + a.length, 0);
+  const totalHave = ALL_STICKERS.length - totalMissing;
+  const pct = Math.round((totalHave / ALL_STICKERS.length) * 100);
+
+  // Data atual
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('pt-BR', {
+    day: '2-digit', month: 'long', year: 'numeric'
+  });
+
+  // Construir HTML de impressão
+  let html = `
+    <h1>Álbum Copa 2026 — Lista de Trocas</h1>
+    <div class="print-subtitle">Panini · Gerado em ${dateStr}</div>
+
+    <div class="print-stats">
+      <span><strong>${totalHave}</strong> coladas</span>
+      <span><strong>${totalDups}</strong> repetidas</span>
+      <span><strong>${totalMissing}</strong> faltam</span>
+      <span><strong>${pct}%</strong> completo</span>
+    </div>
+  `;
+
+  // Repetidas
+  html += `<h2>🔁 Repetidas (${totalDups})</h2>`;
+  if (dups.length === 0) {
+    html += '<div class="print-list">Nenhuma repetida.</div>';
+  } else {
+    // Agrupar repetidas por seleção
+    const dupsByTeam = {};
+    dups.forEach(d => {
+      if (!dupsByTeam[d.team]) dupsByTeam[d.team] = [];
+      dupsByTeam[d.team].push(d.code + (d.count > 1 ? ' x' + d.count : ''));
+    });
+    html += '<div class="print-list">';
+    Object.keys(dupsByTeam).forEach(team => {
+      html += `<div class="print-team"><span class="print-team-name">${team}:</span> <span class="print-codes">${dupsByTeam[team].join(', ')}</span></div>`;
+    });
+    html += '</div>';
+  }
+
+  // Faltam
+  html += `<h2>🎯 Faltam (${totalMissing})</h2>`;
+  if (totalMissing === 0) {
+    html += '<div class="print-list">Álbum completo! 🏆</div>';
+  } else {
+    html += '<div class="print-list">';
+    Object.keys(missingByTeam).forEach(team => {
+      html += `<div class="print-team"><span class="print-team-name">${team}:</span> <span class="print-codes">${missingByTeam[team].join(', ')}</span></div>`;
+    });
+    html += '</div>';
+  }
+
+  html += '<div class="print-footer">Álbum Copa 2026 · Controle de Figurinhas</div>';
+
+  document.getElementById('print-area').innerHTML = html;
+
+  // Pequeno delay para garantir renderização
+  setTimeout(() => {
+    window.print();
+  }, 100);
 });
 
 // ============= RESET =============
