@@ -579,104 +579,11 @@
     font-size: 11px;
   }
 
-  /* ===== IMPRESSÃO ===== */
-  @media print {
-    body {
-      background: white !important;
-      color: black !important;
-      padding: 0;
-      margin: 0;
-    }
-    body * { visibility: hidden; }
-    #print-area, #print-area * { visibility: visible; }
-    #print-area {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      padding: 0;
-      background: white !important;
-      color: black !important;
-      font-family: 'Inter', sans-serif;
-    }
-    #print-area h1 {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 18px;
-      letter-spacing: 1px;
-      color: black !important;
-      margin: 0 0 2px 0;
-      border-bottom: 1.5px solid black;
-      padding-bottom: 3px;
-    }
-    #print-area .print-subtitle {
-      font-size: 8px;
-      color: #555 !important;
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    #print-area h2 {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 12px;
-      letter-spacing: 0.5px;
-      color: black !important;
-      margin: 8px 0 3px 0;
-      padding-bottom: 1px;
-      border-bottom: 1px solid #999;
-    }
-    #print-area .print-stats {
-      display: flex;
-      gap: 14px;
-      font-size: 9px;
-      margin-bottom: 4px;
-      color: #333 !important;
-    }
-    #print-area .print-stats strong { font-size: 10px; }
-    #print-area .print-list {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 8.5px;
-      line-height: 1.35;
-      color: black !important;
-      word-break: break-word;
-      column-count: 2;
-      column-gap: 16px;
-      column-rule: 1px solid #ddd;
-    }
-    #print-area .print-team {
-      margin-bottom: 2px;
-      page-break-inside: avoid;
-      break-inside: avoid;
-    }
-    #print-area .print-team-name {
-      font-weight: 700;
-      font-family: 'Inter', sans-serif;
-      font-size: 8.5px;
-      text-transform: uppercase;
-      color: black !important;
-    }
-    #print-area .print-codes {
-      display: inline;
-      color: #222 !important;
-      font-size: 8.5px;
-    }
-    #print-area .print-footer {
-      margin-top: 8px;
-      padding-top: 4px;
-      border-top: 1px solid #ccc;
-      font-size: 7px;
-      color: #888 !important;
-      text-align: center;
-    }
-    @page {
-      margin: 0.6cm;
-      size: A4;
-    }
-  }
+  /* ===== IMPRESSÃO =====
+     A impressão agora acontece em uma nova janela isolada,
+     então não precisamos de estilos @media print aqui. */
 
-  /* Área de impressão escondida na tela */
-  #print-area {
-    display: none;
-  }
+  /* (área de impressão antiga removida — agora é janela separada) */
 </style>
 </head>
 <body>
@@ -755,9 +662,6 @@
     </div>
   </div>
 </div>
-
-<!-- Área de impressão (oculta na tela) -->
-<div id="print-area"></div>
 
 <div class="toast" id="toast"></div>
 
@@ -1136,18 +1040,16 @@ document.getElementById('print-trade').addEventListener('click', () => {
   const totalHave = ALL_STICKERS.length - totalMissing;
   const pct = Math.round((totalHave / ALL_STICKERS.length) * 100);
 
-  // Data atual
   const now = new Date();
   const dateStr = now.toLocaleDateString('pt-BR', {
     day: '2-digit', month: 'long', year: 'numeric'
   });
 
-  // Construir HTML de impressão
-  let html = `
+  // Construir o conteúdo
+  let bodyHtml = `
     <h1>Álbum Copa 2026 — Lista de Trocas</h1>
-    <div class="print-subtitle">Panini · Gerado em ${dateStr}</div>
-
-    <div class="print-stats">
+    <div class="subtitle">Panini · Gerado em ${dateStr}</div>
+    <div class="stats">
       <span><strong>${totalHave}</strong> coladas</span>
       <span><strong>${totalDups}</strong> repetidas</span>
       <span><strong>${totalMissing}</strong> faltam</span>
@@ -1156,57 +1058,165 @@ document.getElementById('print-trade').addEventListener('click', () => {
   `;
 
   // Repetidas
-  html += `<h2>🔁 Repetidas (${totalDups})</h2>`;
+  bodyHtml += `<h2>🔁 Repetidas (${totalDups})</h2>`;
   if (dups.length === 0) {
-    html += '<div class="print-list" style="column-count:1;">Nenhuma repetida.</div>';
+    bodyHtml += '<div class="list single">Nenhuma repetida.</div>';
   } else {
-    // Agrupar repetidas por seleção (e por código de prefixo para abreviar)
     const dupsByTeam = {};
     const teamPrefixes = {};
     dups.forEach(d => {
       if (!dupsByTeam[d.team]) {
         dupsByTeam[d.team] = [];
-        // Pegar o prefixo a partir do código (ex: "BRA" de "BRA01")
-        const prefix = d.code.replace(/\d+$/, '');
-        teamPrefixes[d.team] = prefix;
+        teamPrefixes[d.team] = d.code.replace(/\d+$/, '');
       }
-      // Mostrar só o número (sem prefixo) para economizar espaço
       const num = d.code.replace(/^[A-Z]+/, '');
       dupsByTeam[d.team].push(num + (d.count > 1 ? '×' + d.count : ''));
     });
-    html += '<div class="print-list">';
+    bodyHtml += '<div class="list">';
     Object.keys(dupsByTeam).forEach(team => {
       const prefix = teamPrefixes[team];
-      html += `<div class="print-team"><span class="print-team-name">${team} (${prefix}):</span> <span class="print-codes">${dupsByTeam[team].join(', ')}</span></div>`;
+      bodyHtml += `<div class="team"><span class="team-name">${team} (${prefix}):</span> <span class="codes">${dupsByTeam[team].join(', ')}</span></div>`;
     });
-    html += '</div>';
+    bodyHtml += '</div>';
   }
 
   // Faltam
-  html += `<h2>🎯 Faltam (${totalMissing})</h2>`;
+  bodyHtml += `<h2>🎯 Faltam (${totalMissing})</h2>`;
   if (totalMissing === 0) {
-    html += '<div class="print-list" style="column-count:1;">Álbum completo! 🏆</div>';
+    bodyHtml += '<div class="list single">Álbum completo! 🏆</div>';
   } else {
-    html += '<div class="print-list">';
+    bodyHtml += '<div class="list">';
     Object.keys(missingByTeam).forEach(team => {
-      // Pegar prefixo do primeiro código
       const firstCode = missingByTeam[team][0];
       const prefix = firstCode.replace(/\d+$/, '');
-      // Mostrar só os números
       const nums = missingByTeam[team].map(c => c.replace(/^[A-Z]+/, ''));
-      html += `<div class="print-team"><span class="print-team-name">${team} (${prefix}):</span> <span class="print-codes">${nums.join(', ')}</span></div>`;
+      bodyHtml += `<div class="team"><span class="team-name">${team} (${prefix}):</span> <span class="codes">${nums.join(', ')}</span></div>`;
     });
-    html += '</div>';
+    bodyHtml += '</div>';
   }
 
-  html += '<div class="print-footer">Álbum Copa 2026 · Controle de Figurinhas</div>';
+  bodyHtml += '<div class="footer">Álbum Copa 2026 · Controle de Figurinhas</div>';
 
-  document.getElementById('print-area').innerHTML = html;
+  // HTML completo da janela de impressão
+  const printHtml = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Lista de Trocas - Copa 2026</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    color: #000;
+    background: #fff;
+    padding: 12mm 10mm;
+    font-size: 9pt;
+    line-height: 1.35;
+  }
+  h1 {
+    font-size: 16pt;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+    border-bottom: 1.5px solid #000;
+    padding-bottom: 4px;
+  }
+  .subtitle {
+    font-size: 8pt;
+    color: #555;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .stats {
+    display: flex;
+    gap: 14px;
+    font-size: 9pt;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+  .stats strong { font-size: 10pt; }
+  h2 {
+    font-size: 11pt;
+    margin: 8px 0 3px 0;
+    padding-bottom: 1px;
+    border-bottom: 1px solid #888;
+  }
+  .list {
+    column-count: 2;
+    column-gap: 14px;
+    column-rule: 1px solid #ddd;
+    font-size: 8.5pt;
+  }
+  .list.single { column-count: 1; }
+  .team {
+    margin-bottom: 3px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .team-name {
+    font-weight: 700;
+    font-size: 8.5pt;
+  }
+  .codes {
+    font-family: 'Courier New', monospace;
+    font-size: 8.5pt;
+  }
+  .footer {
+    margin-top: 10px;
+    padding-top: 4px;
+    border-top: 1px solid #ccc;
+    font-size: 7pt;
+    color: #888;
+    text-align: center;
+  }
+  @page { margin: 8mm; size: A4; }
+  @media print {
+    body { padding: 0; }
+  }
+  .print-actions {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 8px;
+  }
+  .print-actions button {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .btn-print { background: #00d4aa; color: #000; }
+  .btn-close { background: #444; color: #fff; }
+  @media print {
+    .print-actions { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="print-actions">
+  <button class="btn-print" onclick="window.print()">🖨️ Imprimir</button>
+  <button class="btn-close" onclick="window.close()">Fechar</button>
+</div>
+${bodyHtml}
+<script>
+  // Auto-disparar impressão após 300ms
+  setTimeout(() => { window.print(); }, 400);
+<\/script>
+</body>
+</html>`;
 
-  // Pequeno delay para garantir renderização
-  setTimeout(() => {
-    window.print();
-  }, 100);
+  // Abrir nova janela
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    showToast('Bloqueador de pop-up impediu a impressão', true);
+    return;
+  }
+  printWindow.document.open();
+  printWindow.document.write(printHtml);
+  printWindow.document.close();
 });
 
 // ============= RESET =============
