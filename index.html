@@ -1034,7 +1034,7 @@ document.getElementById('print-trade').addEventListener('click', () => {
     day: '2-digit', month: '2-digit', year: 'numeric'
   });
 
-  // Construir linhas da tabela: cada seleção é uma linha
+  // Construir linhas da tabela
   let tableRows = '';
   ALBUM.forEach(team => {
     const teamStickers = ALL_STICKERS.filter(s => s.team === team.code);
@@ -1042,7 +1042,8 @@ document.getElementById('print-trade').addEventListener('click', () => {
     const isComplete = teamHave === teamStickers.length;
 
     let row = `<tr${isComplete ? ' class="row-complete"' : ''}>`;
-    row += `<td class="team-cell"><span class="team-label">${team.name}</span><span class="team-code">${team.code}</span></td>`;
+    // Nome + código numa célula só, em linha
+    row += `<td class="team-cell"><b>${team.name}</b> <span class="team-code">${team.code}</span></td>`;
 
     teamStickers.forEach(s => {
       const v = state[s.code] || 0;
@@ -1053,45 +1054,34 @@ document.getElementById('print-trade').addEventListener('click', () => {
       let content = displayNum;
       if (v === 1) {
         cls = 'cell-have';
+        content = '✓';
       } else if (v >= 2) {
         cls = 'cell-dup';
-        if (v > 2) content = displayNum + '<sup>+' + (v-1) + '</sup>';
+        content = v > 2 ? '✓<sup>+' + (v-1) + '</sup>' : '✓+';
       }
       row += `<td class="${cls}">${content}</td>`;
     });
 
-    // Preencher células vazias se a seleção tem menos de 20 (ex: CC tem 14)
+    // Preencher células vazias
     for (let i = teamStickers.length; i < 20; i++) {
       row += '<td class="cell-empty"></td>';
     }
 
-    row += `<td class="progress-cell">${teamHave}/${teamStickers.length}</td>`;
     row += '</tr>';
     tableRows += row;
   });
 
-  // Cabeçalho com números 1-20
+  // Cabeçalho com números
   let headerCols = '<th class="team-cell-header">Seleção</th>';
   for (let i = 1; i <= 20; i++) {
     headerCols += `<th class="num-header">${i}</th>`;
   }
-  headerCols += '<th class="progress-header">Total</th>';
 
-  // Lista compacta de repetidas (no rodapé)
-  const dupsList = [];
-  ALL_STICKERS.forEach(s => {
-    const v = state[s.code] || 0;
-    if (v >= 2) {
-      dupsList.push(s.code + (v > 2 ? '×' + (v-1) : ''));
-    }
-  });
-
-  // Substituir o body
   document.title = 'Álbum Copa 2026 - Controle';
   document.body.setAttribute('style', 'background:#fff;color:#000;padding:0;margin:0;font-family:Arial,sans-serif;');
   document.body.innerHTML = `
     <style id="print-temp-style">
-      @page { margin: 6mm; size: A4 portrait; }
+      @page { margin: 8mm 6mm; size: A4 portrait; }
 
       body {
         background: #fff !important;
@@ -1110,7 +1100,6 @@ document.getElementById('print-trade').addEventListener('click', () => {
         gap: 8px;
         justify-content: center;
         z-index: 100;
-        margin-bottom: 8px;
       }
       #print-controls button {
         padding: 10px 20px;
@@ -1124,7 +1113,7 @@ document.getElementById('print-trade').addEventListener('click', () => {
       .btn-cancel { background: #fff; color: #000; }
 
       .print-page {
-        padding: 0 8px 8px 8px;
+        padding: 8px 10px;
       }
 
       .print-header {
@@ -1136,7 +1125,7 @@ document.getElementById('print-trade').addEventListener('click', () => {
         margin-bottom: 8px;
       }
       .print-title {
-        font-size: 14pt;
+        font-size: 15pt;
         font-weight: 800;
         letter-spacing: 0.3px;
         line-height: 1;
@@ -1148,166 +1137,147 @@ document.getElementById('print-trade').addEventListener('click', () => {
         font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin-top: 2px;
+        margin-top: 3px;
       }
       .print-stats {
-        font-size: 8pt;
+        font-size: 8.5pt;
         text-align: right;
         line-height: 1.4;
       }
-      .print-stats strong { font-size: 10pt; }
+      .print-stats strong { font-size: 11pt; }
 
       .album-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 7pt;
         font-family: Arial, sans-serif;
         table-layout: fixed;
       }
 
       .album-table th {
-        background: #000;
+        background: #1a1a1a;
         color: #fff;
-        font-size: 6.5pt;
+        font-size: 7pt;
         font-weight: 700;
-        padding: 3px 1px;
+        padding: 4px 1px;
         text-align: center;
-        border: 0.5px solid #000;
+        border: 0.5px solid #1a1a1a;
       }
 
       .album-table .team-cell-header {
         text-align: left;
-        padding-left: 4px;
-        width: 22%;
-      }
-      .album-table .progress-header {
-        width: 6%;
+        padding-left: 6px;
+        width: 24%;
       }
       .album-table .num-header {
-        width: 3.6%;
+        width: 3.8%;
       }
 
       .album-table td {
-        border: 0.5px solid #999;
-        padding: 2px 1px;
+        border: 0.5px solid #bbb;
+        padding: 0;
         text-align: center;
-        height: 14px;
-        font-size: 7pt;
-        font-family: 'Courier New', monospace;
+        height: 16px;
+        font-size: 8pt;
       }
 
       .album-table .team-cell {
         text-align: left;
-        padding-left: 4px;
+        padding: 3px 6px;
         font-family: Arial, sans-serif;
-        background: #f5f5f5;
-        font-size: 7pt;
+        background: #f0f0f0;
+        font-size: 8pt;
         line-height: 1.1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
-      .album-table .team-label {
-        display: block;
+      .album-table .team-cell b {
         font-weight: 700;
-        font-size: 7pt;
       }
       .album-table .team-code {
-        font-size: 5.5pt;
-        color: #666;
-        letter-spacing: 0.3px;
+        color: #888;
+        font-size: 6.5pt;
+        font-weight: 500;
+        margin-left: 3px;
       }
 
+      /* TENHO - preto sólido com check */
       .album-table .cell-have {
-        background: #000;
+        background: #1a1a1a;
         color: #fff;
-        text-decoration: line-through;
         font-weight: 700;
+        font-size: 9pt;
       }
+      /* TENHO + REPETIDA - cinza médio */
       .album-table .cell-dup {
-        background: #333;
+        background: #6b6b6b;
         color: #fff;
         font-weight: 700;
-        position: relative;
+        font-size: 9pt;
       }
       .album-table .cell-dup sup {
-        font-size: 5pt;
-        color: #ffd700;
+        font-size: 6pt;
+        margin-left: 1px;
       }
+      /* FALTA - branco com número */
       .album-table .cell-missing {
         background: #fff;
-        color: #000;
+        color: #333;
+        font-family: 'Courier New', monospace;
+        font-size: 7.5pt;
       }
+      /* INEXISTENTE - hachurado */
       .album-table .cell-empty {
-        background: repeating-linear-gradient(45deg, #eee, #eee 3px, #fff 3px, #fff 6px);
+        background: repeating-linear-gradient(45deg, #f0f0f0, #f0f0f0 3px, #fff 3px, #fff 6px);
         border: 0.5px solid #ddd;
       }
-      .album-table .progress-cell {
-        background: #f0f0f0;
-        font-weight: 700;
-        font-size: 6.5pt;
-        font-family: Arial, sans-serif;
-      }
+      /* Linha completa - destaque */
       .album-table .row-complete .team-cell {
-        background: #d4edda;
+        background: #1a1a1a;
+        color: #fff;
       }
-      .album-table .row-complete .team-label::after {
-        content: ' ✓';
-        color: #00a86b;
-      }
-      .album-table .row-complete .progress-cell {
-        background: #d4edda;
-        color: #00a86b;
+      .album-table .row-complete .team-cell .team-code {
+        color: #ccc;
       }
 
       .legend {
         display: flex;
-        gap: 12px;
-        font-size: 7pt;
-        margin-top: 6px;
+        gap: 14px;
+        font-size: 7.5pt;
+        margin-top: 8px;
         align-items: center;
         flex-wrap: wrap;
       }
       .legend-item {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 5px;
       }
       .legend-box {
-        display: inline-block;
-        width: 14px;
-        height: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 14px;
         border: 0.5px solid #999;
-      }
-      .legend-have { background: #000; }
-      .legend-dup { background: #333; }
-      .legend-miss { background: #fff; }
-
-      .dups-section {
-        margin-top: 8px;
-        padding-top: 6px;
-        border-top: 1px solid #ccc;
-        font-size: 7pt;
-      }
-      .dups-section h3 {
         font-size: 8pt;
-        margin: 0 0 3px 0;
+        font-weight: 700;
       }
-      .dups-list {
-        font-family: 'Courier New', monospace;
-        font-size: 6.5pt;
-        line-height: 1.4;
-        word-break: break-word;
-      }
+      .legend-have { background: #1a1a1a; color: #fff; }
+      .legend-dup { background: #6b6b6b; color: #fff; }
+      .legend-miss { background: #fff; color: #333; }
 
       .print-footer {
-        margin-top: 6px;
-        padding-top: 3px;
+        margin-top: 8px;
+        padding-top: 4px;
         border-top: 1px solid #ccc;
-        font-size: 6pt;
+        font-size: 6.5pt;
         color: #888;
         text-align: center;
       }
 
       @media screen {
-        body { max-width: 1000px; margin: 0 auto !important; }
+        body { max-width: 1100px; margin: 0 auto !important; }
         .print-page { padding: 0 16px 16px; }
       }
       @media print {
@@ -1341,18 +1311,10 @@ document.getElementById('print-trade').addEventListener('click', () => {
       </table>
 
       <div class="legend">
-        <div class="legend-item"><span class="legend-box legend-have"></span> Tenho (riscado)</div>
-        <div class="legend-item"><span class="legend-box legend-dup"></span> Repetida</div>
-        <div class="legend-item"><span class="legend-box legend-miss"></span> Falta</div>
-        <div class="legend-item" style="margin-left:auto;"><strong>Notação:</strong> 5<sup>+2</sup> = tenho 1 + 2 repetidas</div>
+        <div class="legend-item"><span class="legend-box legend-have">✓</span> Tenho</div>
+        <div class="legend-item"><span class="legend-box legend-dup">✓+</span> Tenho + Repetida</div>
+        <div class="legend-item"><span class="legend-box legend-miss">5</span> Falta (mostra o número)</div>
       </div>
-
-      ${dupsList.length > 0 ? `
-        <div class="dups-section">
-          <h3>🔁 Repetidas para troca (${totalDups}):</h3>
-          <div class="dups-list">${dupsList.join(' · ')}</div>
-        </div>
-      ` : ''}
 
       <div class="print-footer">Álbum Copa 2026 · Gerado pelo seu controle de figurinhas</div>
     </div>
@@ -1360,7 +1322,6 @@ document.getElementById('print-trade').addEventListener('click', () => {
 
   window.scrollTo(0, 0);
 
-  // Disparar diálogo de impressão automaticamente
   setTimeout(() => {
     window.print();
   }, 600);
