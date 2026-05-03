@@ -1482,30 +1482,44 @@ function buildShareImageHTML() {
   });
   const pct = Math.round((totalHave / ALL_STICKERS.length) * 100);
 
-  // Agrupar faltantes por seleção
-  const missingByTeam = {};
+  // Separar seleções em 3 grupos:
+  // 1) Em progresso (tem algumas mas faltam outras) - mostradas em destaque
+  // 2) Não iniciadas (todas faltam) - listadas compactas no final
+  // 3) Completas - não mostradas
+  const inProgress = [];
+  const notStarted = [];
+
   ALBUM.forEach(team => {
     const teamStickers = ALL_STICKERS.filter(s => s.team === team.code);
+    const have = teamStickers.filter(s => (state[s.code] || 0) >= 1).length;
     const missing = teamStickers.filter(s => (state[s.code] || 0) === 0);
-    if (missing.length > 0) {
-      missingByTeam[team.name] = {
+    if (missing.length === 0) return; // completa, pula
+    if (have === 0) {
+      notStarted.push({ name: team.name, prefix: team.code, total: teamStickers.length });
+    } else {
+      inProgress.push({
+        name: team.name,
+        prefix: team.code,
         count: missing.length,
         total: teamStickers.length,
-        nums: missing.map(s => parseInt(s.code.replace(/^[A-Z]+/, ''), 10).toString()),
-        prefix: team.code
-      };
+        nums: missing.map(s => parseInt(s.code.replace(/^[A-Z]+/, ''), 10).toString())
+      });
     }
   });
 
-  let teamsHtml = '';
-  Object.keys(missingByTeam).forEach(teamName => {
-    const info = missingByTeam[teamName];
+  // Ordenar "em progresso" por quantas faltam (menos faltando = mais perto de completar = primeiro)
+  inProgress.sort((a, b) => a.count - b.count);
+
+  let progressHtml = '';
+  inProgress.forEach(info => {
     const teamPct = Math.round(((info.total - info.count) / info.total) * 100);
-    teamsHtml += `
+    progressHtml += `
       <div class="img-team">
         <div class="img-team-header">
-          <div class="img-team-name">${teamName} <span class="img-team-prefix">${info.prefix}</span></div>
-          <div class="img-team-count">${info.count}/${info.total}</div>
+          <div class="img-team-name">${info.name}</div>
+          <div class="img-team-progress">
+            <span class="img-team-frac">${info.total - info.count}/${info.total}</span>
+          </div>
         </div>
         <div class="img-nums">
           ${info.nums.map(n => `<span class="img-num">${n}</span>`).join('')}
@@ -1514,12 +1528,37 @@ function buildShareImageHTML() {
     `;
   });
 
-  if (Object.keys(missingByTeam).length === 0) {
-    teamsHtml = `
+  let notStartedHtml = '';
+  if (notStarted.length > 0) {
+    notStartedHtml = `
+      <div class="img-not-started">
+        <div class="img-not-started-title">⚠️ Ainda não comecei estas (qualquer figurinha ajuda):</div>
+        <div class="img-not-started-list">
+          ${notStarted.map(t => `<span class="img-team-pill">${t.name}</span>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  let mainContent = '';
+  if (inProgress.length === 0 && notStarted.length === 0) {
+    mainContent = `
       <div class="img-complete">
         <div class="img-trophy">🏆</div>
         <div class="img-complete-text">ÁLBUM COMPLETO!</div>
       </div>
+    `;
+  } else {
+    mainContent = `
+      ${inProgress.length > 0 ? `
+        <div class="img-section-title">
+          <span>🎯</span> Estou quase completando estas
+        </div>
+        <div class="img-teams-grid">
+          ${progressHtml}
+        </div>
+      ` : ''}
+      ${notStartedHtml}
     `;
   }
 
@@ -1557,13 +1596,7 @@ function buildShareImageHTML() {
           <div class="img-progress-fill" style="width:${pct}%"></div>
         </div>
 
-        <div class="img-section-title">
-          <span>🎯</span> Estou procurando estas figurinhas
-        </div>
-
-        <div class="img-teams-grid">
-          ${teamsHtml}
-        </div>
+        ${mainContent}
 
         <div class="img-footer">
           PANINI · FIFA WORLD CUP 2026
@@ -1577,23 +1610,32 @@ function buildShareImageHTML() {
 const imageStyles = `
 <style>
   #image-container .img-card {
-    width: 720px;
+    width: 1080px;
     background: linear-gradient(135deg, #0a0e1a 0%, #131829 100%);
     color: #e8ecf5;
     font-family: 'Inter', -apple-system, sans-serif;
-    padding: 40px;
+    padding: 56px;
     box-sizing: border-box;
     position: relative;
     overflow: hidden;
   }
   #image-container .img-bg-pattern {
     position: absolute;
-    top: -100px;
-    right: -100px;
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, rgba(0,212,170,0.15) 0%, transparent 70%);
+    top: -150px;
+    right: -150px;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(0,212,170,0.18) 0%, transparent 70%);
     pointer-events: none;
+  }
+  #image-container .img-bg-pattern::after {
+    content: '';
+    position: absolute;
+    bottom: -300px;
+    left: -200px;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(255,184,0,0.12) 0%, transparent 70%);
   }
   #image-container .img-content {
     position: relative;
@@ -1603,59 +1645,60 @@ const imageStyles = `
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 28px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #252b45;
+    margin-bottom: 36px;
+    padding-bottom: 28px;
+    border-bottom: 2px solid #252b45;
   }
   #image-container .img-title {
-    line-height: 1;
+    line-height: 0.95;
   }
   #image-container .img-album {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 38px;
-    letter-spacing: 2px;
+    font-size: 64px;
+    letter-spacing: 3px;
     color: #e8ecf5;
   }
   #image-container .img-cup {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 38px;
-    letter-spacing: 2px;
+    font-size: 64px;
+    letter-spacing: 3px;
     color: #00d4aa;
-    margin-top: 2px;
+    margin-top: 4px;
   }
   #image-container .img-badge {
     text-align: right;
   }
   #image-container .img-pct {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 56px;
+    font-size: 88px;
     font-weight: 700;
     color: #00d4aa;
     line-height: 1;
   }
   #image-container .img-pct-label {
-    font-size: 11px;
+    font-size: 14px;
     color: #8892b0;
     text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-top: 4px;
+    letter-spacing: 3px;
+    margin-top: 6px;
+    font-weight: 600;
   }
   #image-container .img-stats-row {
     display: flex;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 16px;
+    margin-bottom: 20px;
   }
   #image-container .img-stat {
     flex: 1;
     background: #1a2038;
     border: 1px solid #252b45;
-    border-radius: 12px;
-    padding: 16px;
+    border-radius: 16px;
+    padding: 24px;
     text-align: center;
   }
   #image-container .img-stat-value {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 28px;
+    font-size: 48px;
     font-weight: 700;
     line-height: 1;
   }
@@ -1663,112 +1706,138 @@ const imageStyles = `
   #image-container .img-stat-value.dup { color: #ffb800; }
   #image-container .img-stat-value.miss { color: #ff6b6b; }
   #image-container .img-stat-label {
-    font-size: 10px;
+    font-size: 13px;
     color: #8892b0;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-top: 6px;
+    letter-spacing: 2px;
+    margin-top: 10px;
+    font-weight: 600;
   }
   #image-container .img-progress {
-    height: 8px;
+    height: 12px;
     background: #252b45;
-    border-radius: 4px;
+    border-radius: 6px;
     overflow: hidden;
-    margin-bottom: 28px;
+    margin-bottom: 40px;
   }
   #image-container .img-progress-fill {
     height: 100%;
     background: linear-gradient(90deg, #00d4aa 0%, #ffb800 100%);
-    border-radius: 4px;
+    border-radius: 6px;
   }
   #image-container .img-section-title {
-    font-size: 13px;
-    color: #8892b0;
+    font-size: 16px;
+    color: #e8ecf5;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
-    font-weight: 600;
-    margin-bottom: 16px;
+    letter-spacing: 2px;
+    font-weight: 700;
+    margin-bottom: 20px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
   }
   #image-container .img-section-title span {
-    font-size: 18px;
+    font-size: 24px;
   }
   #image-container .img-teams-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 28px;
+    gap: 14px;
+    margin-bottom: 32px;
   }
   #image-container .img-team {
     background: #1a2038;
     border: 1px solid #252b45;
-    border-radius: 10px;
-    padding: 10px 12px;
+    border-radius: 12px;
+    padding: 16px 18px;
   }
   #image-container .img-team-header {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 6px;
+    align-items: center;
+    margin-bottom: 12px;
   }
   #image-container .img-team-name {
-    font-size: 13px;
+    font-size: 18px;
     font-weight: 700;
     color: #e8ecf5;
   }
-  #image-container .img-team-prefix {
-    font-size: 10px;
-    color: #8892b0;
-    font-weight: 500;
-    margin-left: 4px;
-    letter-spacing: 0.5px;
-  }
-  #image-container .img-team-count {
+  #image-container .img-team-frac {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: #ff6b6b;
+    font-size: 13px;
+    color: #00d4aa;
     font-weight: 700;
+    background: rgba(0,212,170,0.12);
+    padding: 4px 10px;
+    border-radius: 6px;
   }
   #image-container .img-nums {
     display: flex;
     flex-wrap: wrap;
-    gap: 3px;
+    gap: 6px;
   }
   #image-container .img-num {
     background: #252b45;
     color: #e8ecf5;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: 14px;
     font-weight: 700;
-    padding: 3px 6px;
-    border-radius: 4px;
-    min-width: 18px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    min-width: 28px;
     text-align: center;
+  }
+  #image-container .img-not-started {
+    background: #1a2038;
+    border: 1px solid #252b45;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 32px;
+  }
+  #image-container .img-not-started-title {
+    font-size: 14px;
+    color: #ffb800;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+  #image-container .img-not-started-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  #image-container .img-team-pill {
+    background: #252b45;
+    color: #e8ecf5;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 20px;
   }
   #image-container .img-complete {
     text-align: center;
-    padding: 60px 20px;
+    padding: 80px 20px;
   }
   #image-container .img-trophy {
-    font-size: 80px;
-    margin-bottom: 16px;
+    font-size: 120px;
+    margin-bottom: 24px;
   }
   #image-container .img-complete-text {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 32px;
+    font-size: 56px;
     color: #00d4aa;
-    letter-spacing: 2px;
+    letter-spacing: 3px;
   }
   #image-container .img-footer {
     text-align: center;
-    font-size: 10px;
+    font-size: 13px;
     color: #8892b0;
     text-transform: uppercase;
-    letter-spacing: 2px;
-    padding-top: 16px;
+    letter-spacing: 3px;
+    padding-top: 24px;
     border-top: 1px solid #252b45;
+    font-weight: 600;
   }
 </style>
 `;
@@ -1792,7 +1861,7 @@ document.getElementById('share-image').addEventListener('click', async () => {
     const cardEl = container.querySelector('.img-card');
     const canvas = await html2canvas(cardEl, {
       backgroundColor: '#0a0e1a',
-      scale: 2,
+      scale: 1.5,
       logging: false,
       useCORS: true,
       allowTaint: true
