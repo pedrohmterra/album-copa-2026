@@ -2249,35 +2249,40 @@ render();
 
 
 <script>
-// Service Worker inline para funcionamento offline
-if ('serviceWorker' in navigator) {
-  const swCode = `
-    self.addEventListener('install', e => self.skipWaiting());
-    self.addEventListener('activate', e => self.clients.claim());
-    self.addEventListener('fetch', e => {
-      e.respondWith(
-        caches.open('copa2026-v1').then(cache =>
-          cache.match(e.request).then(r => r || fetch(e.request).then(resp => {
-            if (resp.ok) cache.put(e.request, resp.clone());
-            return resp;
-          }).catch(() => cache.match('/')))
-        )
-      );
-    });
-  `;
-  const blob = new Blob([swCode], { type: 'application/javascript' });
-  const swUrl = URL.createObjectURL(blob);
-  navigator.serviceWorker.register(swUrl).catch(() => {});
-}
+// Detectar instalação PWA
+let deferredPrompt = null;
 
-// Detectar instalação
-let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
+  // Não prevenir o default — deixar o Chrome decidir
   deferredPrompt = e;
   const installBtn = document.getElementById('install-btn');
   if (installBtn) installBtn.style.display = 'inline-flex';
+  console.log('[PWA] beforeinstallprompt capturado');
 });
+
+window.addEventListener('appinstalled', () => {
+  console.log('[PWA] App instalado com sucesso');
+  deferredPrompt = null;
+  const installBtn = document.getElementById('install-btn');
+  if (installBtn) installBtn.style.display = 'none';
+  if (typeof showToast === 'function') showToast('App instalado!');
+});
+
+// Detectar se já está rodando como app instalado
+if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+  console.log('[PWA] Rodando como app instalado');
+  document.documentElement.classList.add('pwa-installed');
+}
+
+// Service Worker — registrar apenas o sw.js que está no mesmo diretório
+// Isso é necessário para o Chrome considerar o site instalável como PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('[PWA] Service Worker registrado:', reg.scope))
+      .catch(err => console.log('[PWA] Service Worker falhou (normal se sw.js não existe):', err));
+  });
+}
 </script>
 </body>
 </html>
