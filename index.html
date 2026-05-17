@@ -718,6 +718,13 @@
             <div class="share-desc">Ver suas repetidas e o que falta, com opção de imprimir</div>
           </div>
         </button>
+        <button class="share-option" id="menu-summary" style="display:none;">
+          <div class="share-icon" style="background:rgba(255,184,0,0.15);">📑</div>
+          <div class="share-text">
+            <div class="share-title">Resumo Sintético <span id="summary-badge" style="background:var(--accent-warm);color:#0a0e1a;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;margin-left:4px;">RETA FINAL</span></div>
+            <div class="share-desc">Lista compacta de tudo que falta e suas repetidas em uma página</div>
+          </div>
+        </button>
         <button class="share-option" id="menu-share">
           <div class="share-icon" style="background:rgba(37,211,102,0.15);">💬</div>
           <div class="share-text">
@@ -1514,6 +1521,12 @@ const menuModal = document.getElementById('menu-modal');
 const btnMenu = document.getElementById('btn-menu');
 
 btnMenu.addEventListener('click', () => {
+  // Mostrar/esconder opção de Resumo Sintético baseado em faltantes
+  const missingCount = ALL_STICKERS.filter(s => (state[s.code] || 0) === 0).length;
+  const menuSummary = document.getElementById('menu-summary');
+  if (menuSummary) {
+    menuSummary.style.display = missingCount < 100 && missingCount > 0 ? 'flex' : 'none';
+  }
   menuModal.classList.add('show');
 });
 
@@ -1538,6 +1551,10 @@ function menuAction(targetId) {
 document.getElementById('menu-trade').addEventListener('click', () => {
   menuModal.classList.remove('show');
   setTimeout(() => document.getElementById('btn-trade').click(), 150);
+});
+document.getElementById('menu-summary').addEventListener('click', () => {
+  menuModal.classList.remove('show');
+  setTimeout(() => openSummaryReport(), 150);
 });
 document.getElementById('menu-share').addEventListener('click', () => {
   menuModal.classList.remove('show');
@@ -1701,6 +1718,324 @@ document.getElementById('import-file').addEventListener('change', (e) => {
   };
   reader.readAsText(file);
 });
+
+// ============= RESUMO SINTÉTICO (RETA FINAL) =============
+function openSummaryReport() {
+  // Coletar dados
+  let totalHave = 0, totalDups = 0, totalMissing = 0;
+  ALL_STICKERS.forEach(s => {
+    const v = state[s.code] || 0;
+    if (v >= 1) totalHave++; else totalMissing++;
+    if (v >= 2) totalDups += (v - 1);
+  });
+  const pct = Math.round((totalHave / ALL_STICKERS.length) * 100);
+
+  // Lista de faltantes (códigos sem prefixo zero — ex: BRA01 → BRA1)
+  const missing = [];
+  ALL_STICKERS.forEach(s => {
+    if ((state[s.code] || 0) === 0) {
+      const num = parseInt(s.code.replace(/^[A-Z]+/, ''), 10);
+      const prefix = s.code.replace(/\d+$/, '');
+      missing.push(prefix + num);
+    }
+  });
+
+  // Lista de repetidas (com indicação de quantidade quando > 1)
+  const dups = [];
+  ALL_STICKERS.forEach(s => {
+    const v = state[s.code] || 0;
+    if (v >= 2) {
+      const num = parseInt(s.code.replace(/^[A-Z]+/, ''), 10);
+      const prefix = s.code.replace(/\d+$/, '');
+      const qty = v - 1;
+      dups.push(prefix + num + (qty > 1 ? ' (' + qty + ')' : ''));
+    }
+  });
+
+  // Data formatada
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('pt-BR') + ' ' +
+                  now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  // Construir HTML do relatório
+  const reportHtml = `
+    <div class="summary-report">
+      <div class="sr-header">
+        <div class="sr-logo">
+          <div class="sr-logo-img">⚽</div>
+        </div>
+        <div class="sr-header-text">
+          <div class="sr-title">FIFA World Cup 2026</div>
+          <div class="sr-subtitle">Copa do Mundo 2026</div>
+          <div class="sr-summary-label">Resumo de figurinhas faltantes e repetidas</div>
+          <div class="sr-date">${dateStr}</div>
+        </div>
+      </div>
+
+      <div class="sr-stats">
+        <span><strong>${totalHave}</strong>/${ALL_STICKERS.length} coladas (<strong>${pct}%</strong>)</span>
+        <span><strong>${totalMissing}</strong> faltam</span>
+        <span><strong>${totalDups}</strong> repetidas</span>
+      </div>
+
+      <h2 class="sr-section-title">Figurinhas Faltantes ${totalMissing > 0 ? '(' + totalMissing + ')' : ''}</h2>
+      ${totalMissing === 0 ? `
+        <div class="sr-empty">🏆 Nenhuma! Álbum completo!</div>
+      ` : `
+        <table class="sr-table">
+          <tbody>${buildSummaryRows(missing, 12)}</tbody>
+        </table>
+      `}
+
+      <h2 class="sr-section-title">Figurinhas Repetidas ${totalDups > 0 ? '(' + totalDups + ')' : ''}</h2>
+      ${dups.length === 0 ? `
+        <div class="sr-empty">Nenhuma repetida no momento.</div>
+      ` : `
+        <table class="sr-table sr-table-dups">
+          <tbody>${buildSummaryRows(dups, 9)}</tbody>
+        </table>
+      `}
+
+      <div class="sr-footer">
+        Conteúdo gerado pelo app de Controle de Figurinhas · Álbum Copa 2026
+      </div>
+    </div>
+  `;
+
+  const summaryStyles = `
+<style>
+  .summary-report {
+    width: 1000px;
+    background: #ffffff;
+    color: #000;
+    font-family: Arial, sans-serif;
+    padding: 30px 36px;
+    box-sizing: border-box;
+  }
+  .summary-report .sr-header {
+    display: flex;
+    gap: 18px;
+    margin-bottom: 18px;
+    align-items: flex-start;
+  }
+  .summary-report .sr-logo {
+    width: 100px;
+    height: 100px;
+    flex-shrink: 0;
+    background: linear-gradient(135deg,
+      #ff6b6b 0%, #ffb800 20%, #00d4aa 40%,
+      #4dabf7 60%, #845ef7 80%, #ff6b9d 100%);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 50px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .summary-report .sr-header-text {
+    flex: 1;
+    padding-top: 2px;
+  }
+  .summary-report .sr-title {
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 4px;
+  }
+  .summary-report .sr-subtitle {
+    font-size: 16px;
+    color: #444;
+    margin-bottom: 4px;
+  }
+  .summary-report .sr-summary-label {
+    font-size: 14px;
+    color: #444;
+    margin-bottom: 4px;
+  }
+  .summary-report .sr-date {
+    font-size: 13px;
+    color: #777;
+  }
+  .summary-report .sr-stats {
+    display: flex;
+    gap: 24px;
+    font-size: 13px;
+    color: #444;
+    padding: 10px 0;
+    margin-bottom: 14px;
+    border-top: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+  }
+  .summary-report .sr-stats strong { color: #000; font-size: 15px; }
+  .summary-report .sr-section-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 18px 0 10px 0;
+    color: #000;
+  }
+  .summary-report .sr-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+    table-layout: fixed;
+  }
+  .summary-report .sr-table td {
+    border: 1px solid #999;
+    padding: 9px 6px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    color: #000;
+    background: #fff;
+    height: 22px;
+  }
+  .summary-report .sr-table-dups td {
+    background: #fafafa;
+  }
+  .summary-report .sr-empty {
+    padding: 20px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 14px;
+    color: #555;
+  }
+  .summary-report .sr-footer {
+    margin-top: 24px;
+    padding-top: 12px;
+    border-top: 1px solid #ddd;
+    font-size: 11px;
+    color: #888;
+    text-align: center;
+  }
+</style>`;
+
+  // Renderizar usando a mesma estratégia do imprimir: substituir body
+  document.title = 'Resumo Sintético - Copa 2026';
+  document.body.setAttribute('style', 'background:#f0f0f0;color:#000;padding:0;margin:0;font-family:Arial,sans-serif;');
+
+  document.body.innerHTML = `
+    ${summaryStyles}
+    <style>
+      body { background: #f0f0f0; }
+      #sr-controls {
+        position: sticky;
+        top: 0;
+        background: #00d4aa;
+        padding: 12px;
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        z-index: 100;
+        flex-wrap: wrap;
+      }
+      #sr-controls button {
+        padding: 10px 18px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .btn-share-img { background: #25D366; color: #fff; }
+      .btn-do-print { background: #000; color: #00d4aa; }
+      .btn-cancel { background: #fff; color: #000; }
+      .sr-wrapper {
+        max-width: 1000px;
+        margin: 20px auto;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      }
+      @media print {
+        #sr-controls { display: none !important; }
+        body { background: #fff !important; }
+        .sr-wrapper { margin: 0 !important; box-shadow: none !important; max-width: none !important; }
+        .summary-report { padding: 12mm !important; width: 100% !important; }
+        @page { margin: 0; size: A4; }
+      }
+      @media screen and (max-width: 1020px) {
+        .summary-report { width: 100% !important; padding: 18px !important; }
+        .sr-wrapper { margin: 12px !important; }
+      }
+    </style>
+    <div id="sr-controls">
+      <button class="btn-share-img" onclick="shareSummaryAsImage()">📷 Compartilhar Imagem</button>
+      <button class="btn-do-print" onclick="window.print()">🖨️ Imprimir / PDF</button>
+      <button class="btn-cancel" onclick="window.location.reload()">Voltar</button>
+    </div>
+    <div class="sr-wrapper" id="sr-wrapper">
+      ${reportHtml}
+    </div>
+    <script>
+      window.shareSummaryAsImage = async function() {
+        const el = document.querySelector('.summary-report');
+        if (!el) return;
+        try {
+          // Carregar html2canvas se ainda não estiver carregado
+          if (typeof html2canvas === 'undefined') {
+            await new Promise((resolve, reject) => {
+              const s = document.createElement('script');
+              s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+              s.onload = resolve;
+              s.onerror = reject;
+              document.head.appendChild(s);
+            });
+          }
+          const canvas = await html2canvas(el, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            logging: false
+          });
+          canvas.toBlob(async (blob) => {
+            if (!blob) return alert('Erro ao gerar imagem');
+            const file = new File([blob], 'resumo-copa-2026.png', { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+              try {
+                await navigator.share({
+                  files: [file],
+                  title: 'Resumo Álbum Copa 2026',
+                  text: 'Meu resumo de figurinhas faltantes e repetidas!'
+                });
+              } catch (e) {
+                if (e.name !== 'AbortError') downloadImg(blob);
+              }
+            } else {
+              downloadImg(blob);
+            }
+          }, 'image/png');
+        } catch (e) {
+          console.error(e);
+          alert('Erro ao gerar imagem: ' + e.message);
+        }
+      };
+      window.downloadImg = function(blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'resumo-copa-2026.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      };
+    <\/script>
+  `;
+
+  window.scrollTo(0, 0);
+}
+
+// Helper: monta as linhas da tabela com N colunas
+function buildSummaryRows(items, cols) {
+  let html = '';
+  for (let i = 0; i < items.length; i += cols) {
+    html += '<tr>';
+    for (let j = 0; j < cols; j++) {
+      const item = items[i + j];
+      html += `<td>${item !== undefined ? item : '&nbsp;'}</td>`;
+    }
+    html += '</tr>';
+  }
+  return html;
+}
 
 // Botão ajuda
 const btnHelp = document.getElementById('btn-help');
