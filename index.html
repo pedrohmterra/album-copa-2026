@@ -1865,6 +1865,7 @@ function openSummaryReport() {
     margin-bottom: 14px;
     border-top: 1px solid #ddd;
     border-bottom: 1px solid #ddd;
+    flex-wrap: wrap;
   }
   .summary-report .sr-stats strong { color: #000; font-size: 15px; }
   .summary-report .sr-section-title {
@@ -1881,13 +1882,16 @@ function openSummaryReport() {
   }
   .summary-report .sr-table td {
     border: 1px solid #999;
-    padding: 9px 6px;
+    padding: 8px 4px;
     text-align: center;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     color: #000;
     background: #fff;
     height: 22px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .summary-report .sr-table-dups td {
     background: #fafafa;
@@ -1940,21 +1944,36 @@ function openSummaryReport() {
       .btn-share-img { background: #25D366; color: #fff; }
       .btn-do-print { background: #000; color: #00d4aa; }
       .btn-cancel { background: #fff; color: #000; }
+      .sr-scroll-wrapper {
+        overflow-x: auto;
+        padding: 20px 12px;
+        -webkit-overflow-scrolling: touch;
+      }
       .sr-wrapper {
         max-width: 1000px;
-        margin: 20px auto;
+        margin: 0 auto;
         box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        background: #fff;
+      }
+      .sr-mobile-hint {
+        text-align: center;
+        font-size: 12px;
+        color: #666;
+        padding: 8px;
+        background: #fff8e1;
+        border-bottom: 1px solid #ffe082;
+        display: none;
+      }
+      @media screen and (max-width: 1020px) {
+        .sr-mobile-hint { display: block; }
       }
       @media print {
-        #sr-controls { display: none !important; }
+        #sr-controls, .sr-mobile-hint { display: none !important; }
         body { background: #fff !important; }
+        .sr-scroll-wrapper { overflow: visible !important; padding: 0 !important; }
         .sr-wrapper { margin: 0 !important; box-shadow: none !important; max-width: none !important; }
         .summary-report { padding: 12mm !important; width: 100% !important; }
         @page { margin: 0; size: A4; }
-      }
-      @media screen and (max-width: 1020px) {
-        .summary-report { width: 100% !important; padding: 18px !important; }
-        .sr-wrapper { margin: 12px !important; }
       }
     </style>
     <div id="sr-controls">
@@ -1962,13 +1981,28 @@ function openSummaryReport() {
       <button class="btn-do-print" onclick="window.print()">🖨️ Imprimir / PDF</button>
       <button class="btn-cancel" onclick="window.location.reload()">Voltar</button>
     </div>
-    <div class="sr-wrapper" id="sr-wrapper">
-      ${reportHtml}
+    <div class="sr-mobile-hint">👆 Role lateralmente para ver o relatório completo. A imagem gerada terá tamanho completo.</div>
+    <div class="sr-scroll-wrapper">
+      <div class="sr-wrapper" id="sr-wrapper">
+        ${reportHtml}
+      </div>
     </div>
     <script>
       window.shareSummaryAsImage = async function() {
+        const btn = document.querySelector('.btn-share-img');
+        const originalText = btn ? btn.textContent : '';
+        if (btn) {
+          btn.textContent = '⏳ Gerando imagem...';
+          btn.disabled = true;
+        }
+
         const el = document.querySelector('.summary-report');
-        if (!el) return;
+        if (!el) {
+          alert('Erro: relatório não encontrado');
+          if (btn) { btn.textContent = originalText; btn.disabled = false; }
+          return;
+        }
+
         try {
           // Carregar html2canvas se ainda não estiver carregado
           if (typeof html2canvas === 'undefined') {
@@ -1976,46 +2010,74 @@ function openSummaryReport() {
               const s = document.createElement('script');
               s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
               s.onload = resolve;
-              s.onerror = reject;
+              s.onerror = () => reject(new Error('Não foi possível carregar a biblioteca de imagem. Verifique sua conexão.'));
               document.head.appendChild(s);
             });
           }
+
+          // Pequeno delay para garantir renderização
+          await new Promise(r => setTimeout(r, 100));
+
           const canvas = await html2canvas(el, {
             backgroundColor: '#ffffff',
             scale: 2,
-            logging: false
+            logging: false,
+            width: el.offsetWidth,
+            height: el.offsetHeight,
+            windowWidth: el.offsetWidth,
+            windowHeight: el.offsetHeight
           });
-          canvas.toBlob(async (blob) => {
-            if (!blob) return alert('Erro ao gerar imagem');
-            const file = new File([blob], 'resumo-copa-2026.png', { type: 'image/png' });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-              try {
-                await navigator.share({
-                  files: [file],
-                  title: 'Resumo Álbum Copa 2026',
-                  text: 'Meu resumo de figurinhas faltantes e repetidas!'
-                });
-              } catch (e) {
-                if (e.name !== 'AbortError') downloadImg(blob);
+
+          // Converter para blob
+          const blob = await new Promise((resolve) => {
+            canvas.toBlob(resolve, 'image/png');
+          });
+
+          if (!blob) {
+            throw new Error('Não foi possível gerar a imagem');
+          }
+
+          const file = new File([blob], 'resumo-copa-2026.png', { type: 'image/png' });
+
+          // Tentar compartilhamento nativo
+          let shared = false;
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+              await navigator.share({
+                files: [file],
+                title: 'Resumo Álbum Copa 2026',
+                text: 'Meu resumo de figurinhas faltantes e repetidas!'
+              });
+              shared = true;
+            } catch (e) {
+              if (e.name === 'AbortError') {
+                // Usuário cancelou — não fazer nada
+                if (btn) { btn.textContent = originalText; btn.disabled = false; }
+                return;
               }
-            } else {
-              downloadImg(blob);
+              console.warn('Share falhou, baixando ao invés:', e);
             }
-          }, 'image/png');
+          }
+
+          if (!shared) {
+            // Fallback: download da imagem
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'resumo-copa-2026.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            alert('Imagem baixada! Você pode compartilhar pelo WhatsApp manualmente.');
+          }
+
+          if (btn) { btn.textContent = originalText; btn.disabled = false; }
         } catch (e) {
-          console.error(e);
-          alert('Erro ao gerar imagem: ' + e.message);
+          console.error('Erro ao gerar imagem:', e);
+          alert('Erro ao gerar imagem: ' + (e.message || 'desconhecido'));
+          if (btn) { btn.textContent = originalText; btn.disabled = false; }
         }
-      };
-      window.downloadImg = function(blob) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'resumo-copa-2026.png';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
       };
     <\/script>
   `;
